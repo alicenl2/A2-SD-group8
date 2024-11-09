@@ -106,17 +106,37 @@ class TaskManager:
         task_due_date = input(f"Due Date [{task['task_due_date']}]: ").strip() or task['task_due_date']
         task_description = input(f"Description [{task['task_description']}]: ").strip() or task['task_description']
 
-        priority_level_input = input(f"Priority Level [{task['priority_level']}]: ").strip()
-        if priority_level_input:
-            priority_level = int(priority_level_input)
-        else:
-            priority_level = task['priority_level']
+        # Validate priority level
+        while True:
+            priority_level_input = input(f"Priority Level [{task['priority_level']}]: ").strip()
+            if priority_level_input == '':
+                priority_level = task['priority_level']
+                break
+            try:
+                priority_level = int(priority_level_input)
+                if 1 <= priority_level <= 10:
+                    break
+                else:
+                    print("Please enter a number between 1 and 10.")
+            except ValueError:
+                print("Please enter a valid integer between 1 and 10.")
 
-        status_input = input(f"Status [{task['status']}]: ").strip()
-        if status_input:
-            status = status_input
-        else:
-            status = task['status']
+        # Validate status
+        status_options = {
+            '1': 'To be started',
+            '2': 'In progress',
+            '3': 'Finished'
+        }
+        while True:
+            status_input = input(f"Status [{task['status']}]: ").strip()
+            if status_input == '':
+                status = task['status']
+                break
+            elif status_input in status_options:
+                status = status_options[status_input]
+                break
+            else:
+                print("Please enter a valid option (1, 2, or 3).")
 
         # Update the task
         task.update({
@@ -134,12 +154,19 @@ class TaskManager:
         self.display_tasks()
         try:
             task_number = int(input("Enter the task number you want to delete: "))
-            self.tasks.pop(task_number)
+            self.tasks.pop(task_number - 1)
             self.save_tasks()
             print("Task deleted successfully!")
         except (ValueError, IndexError):
             print("Invalid task number.")
             return
+
+    def view_statistics(self):
+        """Display statistics about tasks."""
+        total_tasks = len(self.tasks)
+        completed_tasks = len([task for task in self.tasks if task['status'] == 'Finished'])
+        print(f"Total tasks: {total_tasks}")
+        print(f"Completed tasks: {completed_tasks}")
 
 def main():
     task_manager = TaskManager()
@@ -150,7 +177,8 @@ def main():
         print("2. Display Tasks")
         print("3. Edit Task")
         print("4. Delete Task")
-        print("5. Exit")
+        print("5. Show Statistics")
+        print("6. Exit")
 
         choice = input("Choose an option: ").strip()
 
@@ -163,9 +191,13 @@ def main():
         elif choice == '4':
             task_manager.delete_task()
         elif choice == '5':
+            task_manager.view_statistics()
+        elif choice == '6':
+            print("Exiting Task Manager. Goodbye!")
             break
         else:
             print("Invalid choice. Please select a valid option.")
 
 if __name__ == "__main__":
     main()
+
