@@ -1,16 +1,16 @@
 [
     {
-        "task_name": "Complete Software Assignment",
-        "task_due_date": "Tomorrow midnight",
-        "task_description": "Simulate development of a task manager product",
-        "priority_level": 8,
+        "task_name": "finish software project",
+        "task_due_date": "tomorrow midnight",
+        "task_description": "git version control project simulation",
+        "priority_level": 10,
         "status": "In progress"
     },
     {
-        "task_name": "clean my room",
-        "task_due_date": "sometime this week",
-        "task_description": "",
-        "priority_level": 4,
+        "task_name": "apply to internships",
+        "task_due_date": "before next weekend",
+        "task_description": "check bookmarked internship links",
+        "priority_level": 3,
         "status": "To be started"
     }
 ]
