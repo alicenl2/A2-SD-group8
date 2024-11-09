@@ -1,0 +1,16 @@
+[
+    {
+        "task_name": "Complete Software Assignment",
+        "task_due_date": "Tomorrow midnight",
+        "task_description": "Simulate development of a task manager product",
+        "priority_level": 8,
+        "status": "In progress"
+    },
+    {
+        "task_name": "clean my room",
+        "task_due_date": "sometime this week",
+        "task_description": "",
+        "priority_level": 4,
+        "status": "To be started"
+    }
+]
