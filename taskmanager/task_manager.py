@@ -1,6 +1,64 @@
 import json
 import os
 
+def display_kanban_board(tasks):
+    """
+    Display tasks organized by status in a Kanban board format with color coding based on priority.
+
+    Args:
+        tasks (list): A list of task dictionaries.
+
+    Returns:
+        str: Confirmation message after displaying the Kanban board.
+    """
+    # Organize tasks by status
+    statuses = {
+        "To be started": [],
+        "In progress": [],
+        "Finished": []
+    }
+
+    for task in tasks:
+        status = task.get('status', 'To be started')
+        statuses.setdefault(status, []).append(task)
+
+    # Define color codes
+    color_map = {
+        1: '\033[91m',  # Red for high priority
+        2: '\033[93m',  # Yellow for medium priority
+        3: '\033[92m'   # Green for low priority
+    }
+    reset_color = '\033[0m'
+
+    # Function to get color based on priority level
+    def get_color(priority_level):
+        if priority_level >= 8:
+            return color_map[1]  # High priority
+        elif 4 <= priority_level <= 7:
+            return color_map[2]  # Medium priority
+        else:
+            return color_map[3]  # Low priority
+
+    # Function to display tasks under each status with color coding
+    def display_tasks(task_list, header):
+        print(f"\n------- {header} -------")
+        for task in task_list:
+            task_name = task.get('task_name', 'Unnamed Task')
+            due_date = task.get('task_due_date', 'No Due Date')
+            priority_level = int(task.get('priority_level', 5))
+            color = get_color(priority_level)
+            print(f"{color}{task_name} - Due: {due_date} (Priority: {priority_level}){reset_color}")
+
+    # Display tasks under each status
+    display_tasks(statuses["To be started"], "To Be Started")
+    display_tasks(statuses["In progress"], "In Progress")
+    display_tasks(statuses["Finished"], "Finished")
+
+    print("\nTask board rendering complete!")
+
+    return "Kanban board displayed successfully with color coding."
+
+
 class TaskManager:
     """Class to manage tasks."""
 
@@ -81,13 +139,16 @@ class TaskManager:
         self.save_tasks()
         print("Task added successfully!")
 
-    def display_tasks(self):
-        """Display all tasks."""
-        if not self.tasks:
+    def display_tasks(self, tasks=None):
+        """Display tasks."""
+        if tasks is None:
+            tasks = self.tasks
+
+        if not tasks:
             print("No tasks available.")
             return
 
-        for index, task in enumerate(self.tasks, start=1):
+        for index, task in enumerate(tasks, start=1):
             print(f"\nTask {index}:")
             print(f"Name: {task.get('task_name', 'N/A')}")
             print(f"Due Date: {task.get('task_due_date', 'N/A')}")
@@ -186,17 +247,92 @@ class TaskManager:
         print(f"Total tasks: {total_tasks}")
         print(f"Completed tasks: {completed_tasks}")
 
+    def display_kanban_board(self):
+        """Display tasks in a Kanban board format."""
+        display_kanban_board(self.tasks)
+
+    def search_tasks(self, keyword):
+        """Search tasks by keyword."""
+        results = [
+            task for task in self.tasks
+            if keyword.lower() in task['task_name'].lower() or
+               keyword.lower() in task['task_description'].lower()
+        ]
+        return results
+
+    def filter_tasks(self, filter_type, value):
+        """Filter tasks based on filter_type and value."""
+        if filter_type == 'status':
+            return [task for task in self.tasks if task['status'] == value]
+        elif filter_type == 'priority_level':
+            return [task for task in self.tasks if task['priority_level'] == value]
+        elif filter_type == 'due_date':
+            return [task for task in self.tasks if task['task_due_date'] == value]
+        else:
+            return []
+
+    def search_tasks_menu(self):
+        """Menu for searching tasks."""
+        keyword = input("Enter keyword to search: ").strip()
+        results = self.search_tasks(keyword)
+        if results:
+            print(f"Found {len(results)} task(s) matching '{keyword}':")
+            self.display_tasks(results)
+        else:
+            print(f"No tasks found matching '{keyword}'.")
+
+    def filter_tasks_menu(self):
+        """Menu for filtering tasks."""
+        print("Filter by:")
+        print("1. Status")
+        print("2. Priority Level")
+        print("3. Due Date")
+        filter_choice = input("Choose a filter option: ").strip()
+        if filter_choice == '1':
+            status_options = {
+                '1': 'To be started',
+                '2': 'In progress',
+                '3': 'Finished'
+            }
+            status_choice = input("Select status:\n1. To be started\n2. In progress\n3. Finished\n").strip()
+            value = status_options.get(status_choice)
+            if value:
+                filtered_tasks = self.filter_tasks('status', value)
+                self.display_tasks(filtered_tasks)
+            else:
+                print("Invalid status option.")
+        elif filter_choice == '2':
+            try:
+                priority_level = int(input("Enter priority level (1-10): ").strip())
+                if 1 <= priority_level <= 10:
+                    filtered_tasks = self.filter_tasks('priority_level', priority_level)
+                    self.display_tasks(filtered_tasks)
+                else:
+                    print("Please enter a number between 1 and 10.")
+            except ValueError:
+                print("Please enter a valid integer.")
+        elif filter_choice == '3':
+            due_date = input("Enter due date (format flexible, e.g., YYYY-MM-DD): ").strip()
+            filtered_tasks = self.filter_tasks('due_date', due_date)
+            self.display_tasks(filtered_tasks)
+        else:
+            print("Invalid filter option.")
+
     def handle_menu_choice(self, choice):
         """Handle a single menu choice."""
         if choice == '1':
             self.add_task()
         elif choice == '2':
-            self.display_tasks()
+            self.display_kanban_board()
         elif choice == '3':
             self.edit_task()
         elif choice == '4':
             self.delete_task()
         elif choice == '5':
+            self.search_tasks_menu()
+        elif choice == '6':
+            self.filter_tasks_menu()
+        elif choice == '7':
             print("Exiting Task Manager. Goodbye!")
             return False  # Signal to exit the loop
         else:
@@ -210,10 +346,12 @@ def main():
     while continue_loop:
         print("\nTask Manager Menu:")
         print("1. Add Task")
-        print("2. Display Tasks")
+        print("2. Display Kanban Board")
         print("3. Edit Task")
         print("4. Delete Task")
-        print("5. Exit")
+        print("5. Search Tasks")
+        print("6. Filter Tasks")
+        print("7. Exit")
 
         choice = input("Choose an option: ").strip()
         continue_loop = task_manager.handle_menu_choice(choice)

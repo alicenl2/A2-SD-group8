@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 import os
 import json
+import io
 
 
 from taskmanager import TaskManager
@@ -212,6 +213,247 @@ class TestTaskManager(unittest.TestCase):
                 self.assertFalse(continue_loop)
                 mock_print.assert_called_with("Exiting Task Manager. Goodbye!")
 
+    def test_display_kanban_board_with_tasks(self):
+        """Test display_kanban_board with multiple tasks."""
+        # Add sample tasks
+        tasks = [
+            {
+                    "task_name": "Task 1",
+                    "task_due_date": "2023-12-31",
+                    "task_description": "Description 1",
+                    "priority_level": 9,
+                    "status": "To be started"
+            },
+            {
+                    "task_name": "Task 2",
+                    "task_due_date": "2024-01-15",
+                    "task_description": "Description 2",
+                    "priority_level": 5,
+                    "status": "In progress"
+            },
+            {
+                    "task_name": "Task 3",
+                    "task_due_date": "2024-02-20",
+                    "task_description": "Description 3",
+                    "priority_level": 2,
+                    "status": "Finished"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.task_manager.display_kanban_board()
+            output = fake_out.getvalue()
+            # Check that headers are present
+            self.assertIn("------- To Be Started -------", output)
+            self.assertIn("------- In Progress -------", output)
+            self.assertIn("------- Finished -------", output)
+            # Check that tasks are displayed under correct headers
+            self.assertIn("Task 1 - Due: 2023-12-31 (Priority: 9)", output)
+            self.assertIn("Task 2 - Due: 2024-01-15 (Priority: 5)", output)
+            self.assertIn("Task 3 - Due: 2024-02-20 (Priority: 2)", output)
+            # Check for color codes (optional)
+            self.assertIn("\033[91m", output)  # High priority color
+            self.assertIn("\033[93m", output)  # Medium priority color
+            self.assertIn("\033[92m", output)  # Low priority color
+            # Check for confirmation message
+            self.assertIn("Task board rendering complete!", output)
+
+    def test_display_kanban_board_with_missing_status(self):
+        """Test display_kanban_board with tasks missing the 'status' key."""
+        # Add a task without 'status'
+        self.task_manager.tasks.append({
+            "task_name": "Task without Status",
+            "task_due_date": "2023-12-31",
+            "task_description": "Description",
+            "priority_level": 7
+            # 'status' key is missing
+        })
+        self.task_manager.save_tasks()
+
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.task_manager.display_kanban_board()
+            output = fake_out.getvalue()
+            # Task should default to "To be started"
+            self.assertIn("------- To Be Started -------", output)
+            self.assertIn("Task without Status", output)
+
+    def test_search_tasks_with_matching_keyword(self):
+        """Test search_tasks method with a keyword that matches tasks."""
+        # Add sample tasks
+        tasks = [
+            {
+                "task_name": "Write report",
+                "task_due_date": "2023-12-31",
+                "task_description": "Write the annual report.",
+                "priority_level": 5,
+                "status": "In progress"
+            },
+            {
+                "task_name": "Prepare presentation",
+                "task_due_date": "2023-12-15",
+                "task_description": "Prepare slides for the meeting.",
+                "priority_level": 7,
+                "status": "To be started"
+            },
+            {
+                "task_name": "Submit report",
+                "task_due_date": "2023-12-20",
+                "task_description": "Submit the annual report to management.",
+                "priority_level": 8,
+                "status": "To be started"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        # Search for tasks with keyword 'report'
+        results = self.task_manager.search_tasks('report')
+        self.assertEqual(len(results), 2)
+        self.assertIn(tasks[0], results)
+        self.assertIn(tasks[2], results)
+
+    def test_search_tasks_with_no_matching_keyword(self):
+        """Test search_tasks method with a keyword that matches no tasks."""
+        # Add sample tasks
+        tasks = [
+            {
+                "task_name": "Write report",
+                "task_due_date": "2023-12-31",
+                "task_description": "Write the annual report.",
+                "priority_level": 5,
+                "status": "In progress"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        # Search for a keyword that doesn't match any tasks
+        results = self.task_manager.search_tasks('presentation')
+        self.assertEqual(len(results), 0)
+
+    # New tests for filter_tasks method
+    def test_filter_tasks_by_status(self):
+        """Test filter_tasks method filtering by status."""
+        # Add sample tasks
+        tasks = [
+            {
+                "task_name": "Task 1",
+                "task_due_date": "2023-12-31",
+                "task_description": "Description 1",
+                "priority_level": 5,
+                "status": "In progress"
+            },
+            {
+                "task_name": "Task 2",
+                "task_due_date": "2023-12-15",
+                "task_description": "Description 2",
+                "priority_level": 7,
+                "status": "To be started"
+            },
+            {
+                "task_name": "Task 3",
+                "task_due_date": "2023-12-20",
+                "task_description": "Description 3",
+                "priority_level": 8,
+                "status": "Finished"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        # Filter tasks by status 'In progress'
+        filtered_tasks = self.task_manager.filter_tasks('status', 'In progress')
+        self.assertEqual(len(filtered_tasks), 1)
+        self.assertEqual(filtered_tasks[0], tasks[0])
+
+    def test_filter_tasks_by_priority_level(self):
+        """Test filter_tasks method filtering by priority level."""
+        # Add sample tasks
+        tasks = [
+            {
+                "task_name": "Task Low Priority",
+                "task_due_date": "2023-12-31",
+                "task_description": "Low priority task",
+                "priority_level": 2,
+                "status": "To be started"
+            },
+            {
+                "task_name": "Task Medium Priority",
+                "task_due_date": "2023-12-15",
+                "task_description": "Medium priority task",
+                "priority_level": 5,
+                "status": "In progress"
+            },
+            {
+                "task_name": "Task High Priority",
+                "task_due_date": "2023-12-20",
+                "task_description": "High priority task",
+                "priority_level": 9,
+                "status": "Finished"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        # Filter tasks by priority level 5
+        filtered_tasks = self.task_manager.filter_tasks('priority_level', 5)
+        self.assertEqual(len(filtered_tasks), 1)
+        self.assertEqual(filtered_tasks[0], tasks[1])
+
+    def test_filter_tasks_by_due_date(self):
+        """Test filter_tasks method filtering by due date."""
+        tasks = [
+            {
+                "task_name": "Task A",
+                "task_due_date": "2023-12-31",
+                "task_description": "Task due at end of year",
+                "priority_level": 5,
+                "status": "In progress"
+            },
+            {
+                "task_name": "Task B",
+                "task_due_date": "2023-12-15",
+                "task_description": "Task due mid-December",
+                "priority_level": 7,
+                "status": "To be started"
+            },
+            {
+                "task_name": "Task C",
+                "task_due_date": "2023-12-31",
+                "task_description": "Another task due at end of year",
+                "priority_level": 8,
+                "status": "Finished"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        # Filter tasks by due date '2023-12-31'
+        filtered_tasks = self.task_manager.filter_tasks('due_date', '2023-12-31')
+        self.assertEqual(len(filtered_tasks), 2)
+        self.assertIn(tasks[0], filtered_tasks)
+        self.assertIn(tasks[2], filtered_tasks)
+
+    def test_filter_tasks_with_invalid_filter_type(self):
+        """Test filter_tasks method with an invalid filter type."""
+        # Add a sample task
+        task = {
+            "task_name": "Sample Task",
+            "task_due_date": "2023-12-31",
+            "task_description": "Sample description.",
+            "priority_level": 5,
+            "status": "To be started"
+        }
+        self.task_manager.tasks.append(task)
+        self.task_manager.save_tasks()
+
+        # Attempt to filter with invalid filter type
+        filtered_tasks = self.task_manager.filter_tasks('invalid_type', 'some_value')
+        self.assertEqual(len(filtered_tasks), 0)
+
 
 if __name__ == '__main__':
     unittest.main()
+
