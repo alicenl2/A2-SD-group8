@@ -1,13 +1,8 @@
 import unittest
 from unittest.mock import patch
-import sys
 import os
 import json
 
-# Add the project root directory to sys.path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
 
 from taskmanager import TaskManager
 
@@ -133,7 +128,7 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(self.task_manager.tasks), initial_task_count - 1)
 
     def test_delete_task_with_invalid_index(self):
-        """Test deleting a task with an invalid index."""
+        """Test deleting a task with an invalid index does not crash the application."""
         # Add a sample task
         self.task_manager.tasks.append({
             "task_name": "Sample Task",
@@ -143,9 +138,24 @@ class TestTaskManager(unittest.TestCase):
             "status": "To be started"
         })
         self.task_manager.save_tasks()
-        # Attempt to delete with an invalid index
-        with self.assertRaises(IndexError):
-            self.task_manager.tasks.pop(5)  # Invalid index
+
+        # Mock input to provide an invalid task number
+        with patch('builtins.input', side_effect=['0', '2', 'invalid', '1']):
+            with patch('builtins.print') as mock_print:
+                self.task_manager.delete_task()
+                self.task_manager.delete_task()
+                self.task_manager.delete_task()
+                self.task_manager.delete_task()
+
+                # Verify that the appropriate error messages were printed
+                expected_calls = [
+                    unittest.mock.call("Invalid task number."),
+                    unittest.mock.call("Invalid task number."),
+                    unittest.mock.call("Please enter a valid task number."),
+                    unittest.mock.call("Task deleted successfully!")
+                ]
+                mock_print.assert_has_calls(expected_calls, any_order=False)
+
 
     def test_get_priority_level_with_invalid_input(self):
         """Test get_priority_level method with invalid input."""
@@ -187,6 +197,20 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual(len(loaded_tasks), 2)
         self.assertEqual(loaded_tasks[0]['task_name'], "Loaded Task 1")
 
+    def test_handle_menu_choice_invalid_then_exit(self):
+        """Test handle_menu_choice with an invalid choice followed by exit."""
+        with patch('builtins.input', side_effect=['']):
+            with patch('builtins.print') as mock_print:
+                task_manager = TaskManager()
+                # Test invalid choice
+                continue_loop = task_manager.handle_menu_choice('invalid')
+                self.assertTrue(continue_loop)
+                mock_print.assert_called_with("Invalid choice. Please select a valid option.")
+
+                # Test exit choice
+                continue_loop = task_manager.handle_menu_choice('5')
+                self.assertFalse(continue_loop)
+                mock_print.assert_called_with("Exiting Task Manager. Goodbye!")
 
 
 if __name__ == '__main__':

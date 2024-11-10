@@ -1,4 +1,5 @@
 import json
+import os
 
 class TaskManager:
     """Class to manage tasks."""
@@ -10,16 +11,22 @@ class TaskManager:
 
     def load_tasks(self):
         """Load tasks from a JSON file."""
+        if not os.path.exists(self.task_file):
+            return []
         try:
             with open(self.task_file, 'r') as file:
                 return json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (json.JSONDecodeError, TypeError):
+            print("Error: Task file is corrupted. Starting with an empty task list.")
             return []
 
     def save_tasks(self):
         """Save tasks to a JSON file."""
-        with open(self.task_file, 'w') as file:
-            json.dump(self.tasks, file, indent=4)
+        try:
+            with open(self.task_file, 'w') as file:
+                json.dump(self.tasks, file, indent=4)
+        except Exception as e:
+            print(f"Error saving tasks: {e}")
 
     def get_user_input(self):
         """Collect task details from the user."""
@@ -56,19 +63,16 @@ class TaskManager:
     def get_status(self):
         """Get task status from the user."""
         status_options = {
-            1: 'To be started',
-            2: 'In progress',
-            3: 'Finished'
+            '1': 'To be started',
+            '2': 'In progress',
+            '3': 'Finished'
         }
         while True:
-            try:
-                status_choice = int(input("Please choose the status of the task:\n1. To be started\n2. In progress\n3. Finished\n"))
-                if status_choice in status_options:
-                    return status_options[status_choice]
-                else:
-                    print("Please enter a valid option (1, 2, or 3).")
-            except ValueError:
-                print("Please enter a valid integer (1, 2, or 3).")
+            status_choice = input("Please choose the status of the task:\n1. To be started\n2. In progress\n3. Finished\n").strip()
+            if status_choice in status_options:
+                return status_options[status_choice]
+            else:
+                print("Please enter a valid option (1, 2, or 3).")
 
     def add_task(self):
         """Add a new task."""
@@ -85,20 +89,28 @@ class TaskManager:
 
         for index, task in enumerate(self.tasks, start=1):
             print(f"\nTask {index}:")
-            print(f"Name: {task['task_name']}")
-            print(f"Due Date: {task['task_due_date']}")
-            print(f"Description: {task['task_description']}")
-            print(f"Priority Level: {task['priority_level']}")
-            print(f"Status: {task['status']}")
+            print(f"Name: {task.get('task_name', 'N/A')}")
+            print(f"Due Date: {task.get('task_due_date', 'N/A')}")
+            print(f"Description: {task.get('task_description', 'N/A')}")
+            print(f"Priority Level: {task.get('priority_level', 'N/A')}")
+            print(f"Status: {task.get('status', 'N/A')}")
 
     def edit_task(self):
         """Edit an existing task."""
+        if not self.tasks:
+            print("No tasks to edit.")
+            return
+
         self.display_tasks()
         try:
             task_number = int(input("Enter the task number you want to edit: "))
-            task = self.tasks[task_number - 1]
-        except (ValueError, IndexError):
-            print("Invalid task number.")
+            if 1 <= task_number <= len(self.tasks):
+                task = self.tasks[task_number - 1]
+            else:
+                print("Invalid task number.")
+                return
+        except ValueError:
+            print("Please enter a valid task number.")
             return
 
         print("Enter new values (leave blank to keep current value):")
@@ -151,15 +163,21 @@ class TaskManager:
 
     def delete_task(self):
         """Delete an existing task."""
+        if not self.tasks:
+            print("No tasks to delete.")
+            return
+
         self.display_tasks()
         try:
             task_number = int(input("Enter the task number you want to delete: "))
-            self.tasks.pop(task_number - 1)
-            self.save_tasks()
-            print("Task deleted successfully!")
-        except (ValueError, IndexError):
-            print("Invalid task number.")
-            return
+            if 1 <= task_number <= len(self.tasks):
+                self.tasks.pop(task_number - 1)
+                self.save_tasks()
+                print("Task deleted successfully!")
+            else:
+                print("Invalid task number.")
+        except ValueError:
+            print("Please enter a valid task number.")
 
     def view_statistics(self):
         """Display statistics about tasks."""
@@ -168,36 +186,37 @@ class TaskManager:
         print(f"Total tasks: {total_tasks}")
         print(f"Completed tasks: {completed_tasks}")
 
+    def handle_menu_choice(self, choice):
+        """Handle a single menu choice."""
+        if choice == '1':
+            self.add_task()
+        elif choice == '2':
+            self.display_tasks()
+        elif choice == '3':
+            self.edit_task()
+        elif choice == '4':
+            self.delete_task()
+        elif choice == '5':
+            print("Exiting Task Manager. Goodbye!")
+            return False  # Signal to exit the loop
+        else:
+            print("Invalid choice. Please select a valid option.")
+        return True  # Continue the loop
+
 def main():
     task_manager = TaskManager()
 
-    while True:
+    continue_loop = True
+    while continue_loop:
         print("\nTask Manager Menu:")
         print("1. Add Task")
         print("2. Display Tasks")
         print("3. Edit Task")
         print("4. Delete Task")
-        print("5. Show Statistics")
-        print("6. Exit")
+        print("5. Exit")
 
         choice = input("Choose an option: ").strip()
-
-        if choice == '1':
-            task_manager.add_task()
-        elif choice == '2':
-            task_manager.display_tasks()
-        elif choice == '3':
-            task_manager.edit_task()
-        elif choice == '4':
-            task_manager.delete_task()
-        elif choice == '5':
-            task_manager.view_statistics()
-        elif choice == '6':
-            print("Exiting Task Manager. Goodbye!")
-            break
-        else:
-            print("Invalid choice. Please select a valid option.")
+        continue_loop = task_manager.handle_menu_choice(choice)
 
 if __name__ == "__main__":
     main()
-
