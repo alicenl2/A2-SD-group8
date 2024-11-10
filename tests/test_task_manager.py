@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 import os
 import json
+import io
 
 
 from taskmanager import TaskManager
@@ -211,6 +212,72 @@ class TestTaskManager(unittest.TestCase):
                 continue_loop = task_manager.handle_menu_choice('5')
                 self.assertFalse(continue_loop)
                 mock_print.assert_called_with("Exiting Task Manager. Goodbye!")
+
+    def test_display_kanban_board_with_tasks(self):
+        """Test display_kanban_board with multiple tasks."""
+        # Add sample tasks
+        tasks = [
+            {
+                    "task_name": "Task 1",
+                    "task_due_date": "2023-12-31",
+                    "task_description": "Description 1",
+                    "priority_level": 9,
+                    "status": "To be started"
+            },
+            {
+                    "task_name": "Task 2",
+                    "task_due_date": "2024-01-15",
+                    "task_description": "Description 2",
+                    "priority_level": 5,
+                    "status": "In progress"
+            },
+            {
+                    "task_name": "Task 3",
+                    "task_due_date": "2024-02-20",
+                    "task_description": "Description 3",
+                    "priority_level": 2,
+                    "status": "Finished"
+            }
+        ]
+        self.task_manager.tasks.extend(tasks)
+        self.task_manager.save_tasks()
+
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.task_manager.display_kanban_board()
+            output = fake_out.getvalue()
+            # Check that headers are present
+            self.assertIn("------- To Be Started -------", output)
+            self.assertIn("------- In Progress -------", output)
+            self.assertIn("------- Finished -------", output)
+            # Check that tasks are displayed under correct headers
+            self.assertIn("Task 1 - Due: 2023-12-31 (Priority: 9)", output)
+            self.assertIn("Task 2 - Due: 2024-01-15 (Priority: 5)", output)
+            self.assertIn("Task 3 - Due: 2024-02-20 (Priority: 2)", output)
+            # Check for color codes (optional)
+            self.assertIn("\033[91m", output)  # High priority color
+            self.assertIn("\033[93m", output)  # Medium priority color
+            self.assertIn("\033[92m", output)  # Low priority color
+            # Check for confirmation message
+            self.assertIn("Task board rendering complete!", output)
+
+    def test_display_kanban_board_with_missing_status(self):
+        """Test display_kanban_board with tasks missing the 'status' key."""
+        # Add a task without 'status'
+        self.task_manager.tasks.append({
+            "task_name": "Task without Status",
+            "task_due_date": "2023-12-31",
+            "task_description": "Description",
+            "priority_level": 7
+            # 'status' key is missing
+        })
+        self.task_manager.save_tasks()
+
+        with patch('sys.stdout', new=io.StringIO()) as fake_out:
+            self.task_manager.display_kanban_board()
+            output = fake_out.getvalue()
+            # Task should default to "To be started"
+            self.assertIn("------- To Be Started -------", output)
+            self.assertIn("Task without Status", output)
 
 
 if __name__ == '__main__':

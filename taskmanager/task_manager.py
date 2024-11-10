@@ -1,6 +1,64 @@
 import json
 import os
 
+def display_kanban_board(tasks):
+    """
+    Display tasks organized by status in a Kanban board format with color coding based on priority.
+
+    Args:
+        tasks (list): A list of task dictionaries.
+
+    Returns:
+        str: Confirmation message after displaying the Kanban board.
+    """
+    # Organize tasks by status
+    statuses = {
+        "To be started": [],
+        "In progress": [],
+        "Finished": []
+    }
+
+    for task in tasks:
+        status = task.get('status', 'To be started')
+        statuses.setdefault(status, []).append(task)
+
+    # Define color codes
+    color_map = {
+        1: '\033[91m',  # Red for high priority
+        2: '\033[93m',  # Yellow for medium priority
+        3: '\033[92m'   # Green for low priority
+    }
+    reset_color = '\033[0m'
+
+    # Function to get color based on priority level
+    def get_color(priority_level):
+        if priority_level >= 8:
+            return color_map[1]  # High priority
+        elif 4 <= priority_level <= 7:
+            return color_map[2]  # Medium priority
+        else:
+            return color_map[3]  # Low priority
+
+    # Function to display tasks under each status with color coding
+    def display_tasks(task_list, header):
+        print(f"\n------- {header} -------")
+        for task in task_list:
+            task_name = task.get('task_name', 'Unnamed Task')
+            due_date = task.get('task_due_date', 'No Due Date')
+            priority_level = int(task.get('priority_level', 5))
+            color = get_color(priority_level)
+            print(f"{color}{task_name} - Due: {due_date} (Priority: {priority_level}){reset_color}")
+
+    # Display tasks under each status
+    display_tasks(statuses["To be started"], "To Be Started")
+    display_tasks(statuses["In progress"], "In Progress")
+    display_tasks(statuses["Finished"], "Finished")
+
+    print("\nTask board rendering complete!")
+
+    return "Kanban board displayed successfully with color coding."
+
+
 class TaskManager:
     """Class to manage tasks."""
 
@@ -186,12 +244,16 @@ class TaskManager:
         print(f"Total tasks: {total_tasks}")
         print(f"Completed tasks: {completed_tasks}")
 
+    def display_kanban_board(self):
+      '''Display tasks in a kanban board format.'''
+      display_kanban_board(self.tasks)
+
     def handle_menu_choice(self, choice):
         """Handle a single menu choice."""
         if choice == '1':
             self.add_task()
         elif choice == '2':
-            self.display_tasks()
+            self.display_kanban_board()
         elif choice == '3':
             self.edit_task()
         elif choice == '4':
@@ -210,7 +272,7 @@ def main():
     while continue_loop:
         print("\nTask Manager Menu:")
         print("1. Add Task")
-        print("2. Display Tasks")
+        print("2. Display Kanban Board")
         print("3. Edit Task")
         print("4. Delete Task")
         print("5. Exit")
